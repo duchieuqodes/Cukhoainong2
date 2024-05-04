@@ -236,3 +236,23 @@ bot.onText(/\/tong/, async (msg) => {
     bot.sendMessage(chatId, "Đã xảy ra lỗi khi truy vấn dữ liệu từ cơ sở dữ liệu.");
   }
 });
+
+// Lệnh /reset để xóa bảng công của những ngày trước
+bot.onText(/\/reset/, async (msg) => {
+  const chatId = msg.chat.id;
+
+  try {
+    // Ngày hiện tại
+    const currentDate = new Date().toLocaleDateString();
+    
+    // Xóa tất cả bảng công có ngày trước ngày hiện tại
+    const result = await BangCong2.deleteMany({
+      date: { $lt: currentDate },
+    });
+
+    bot.sendMessage(chatId, `Đã xóa ${result.deletedCount} bảng công của những ngày trước.`);
+  } catch (error) {
+    console.error('Lỗi khi xóa bảng công:', error);
+    bot.sendMessage(chatId, 'Đã xảy ra lỗi khi xóa bảng công. Vui lòng thử lại.');
+  }
+});
