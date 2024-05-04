@@ -255,3 +255,69 @@ bot.onText(/\/reset/, async (msg) => {
     bot.sendMessage(chatId, 'Đã xảy ra lỗi khi xóa bảng công. Vui lòng thử lại.');
   }
 });
+
+// Hàm loại bỏ icon và emoji từ tên
+const normalizeName = (name) => {
+  // Loại bỏ các icon, emoji hoặc ký tự đặc biệt không phải chữ cái
+  return name.replace(/[^\w\s]/gi, '').toLowerCase().trim();
+};
+
+// Lệnh /edit để chỉnh sửa bảng công
+bot.onText(/\/edit (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const text = match[1]; // Phần sau "/edit"
+
+  // Phân tích cú pháp để lấy các tham số
+  const parts = text.split(',');
+  if (parts.length !== 4) {
+    bot.sendMessage(chatId, 'Định dạng không hợp lệ. Đúng định dạng là: /edit groupId, ten, quay, keo.');
+    return;
+  }
+
+  const [groupId, rawTen, quayStr, keoStr] = parts.map((p) => p.trim());
+  const quay = parseInt(quayStr, 10); // Chuyển đổi quay thành số nguyên
+  const keo = parseInt(keoStr, 10); // Chuyển đổi keo thành số nguyên
+
+  if (isNaN(quay) || isNaN(keo)) {
+    bot.sendMessage(chatId, 'Quay và Keo phải là số.');
+    return;
+  }
+
+  try {
+    const normalizedRawTen = normalizeName(rawTen); // Chuẩn hóa tên đầu vào
+
+    const currentDate = new Date().toLocaleDateString();
+
+    // Tìm bảng công với tên gần đúng (loại bỏ icon và emoji)
+    const bangCong = await BangCong2.findOne({
+      groupId,
+      date: currentDate,
+      ten: { $regex: normalizedRawTen, $options: 'i' }, // So khớp không phân biệt chữ hoa/thường
+    });
+
+    if (!bangCong) {
+      bot.sendMessage(chatId, `Không tìm thấy bảng công cho thành viên có tên gần đúng với "${rawTen}" trong nhóm ${groupId}.`);
+      return;
+    }
+
+    // Cập nhật quay và keo
+    bangCong.quay = quay;
+    bangCong.keo = keo;
+
+    // Cập nhật tổng tiền
+    bangCong.tinh_tien = quay * 500 + keo * 1000;
+
+    await bangCong.save(); // Lưu thay đổi
+
+    bot.sendMessage(chatId, `Bảng công cho thành viên có tên gần đúng với "${rawTen}" trong nhóm ${groupId} đã được cập nhật.`);
+  } catch (error) {
+    console.error('Lỗi khi chỉnh sửa bảng công:', error);
+    bot.sendMessage(chatId, 'Đã xảy ra lỗi khi chỉnh sửa bảng công. Vui lòng thử lại.');
+  }
+});
+
+// Các xử lý khác (ví dụ: xử lý message)
+bot.on('message', async (msg) => {
+  const chatId = msg.chat.id;
+  // Các đoạn mã khác như xử lý bảng công...
+});
